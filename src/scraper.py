@@ -1,6 +1,10 @@
 import requests
 import lxml.html as html
 import os
+import json
+import csv
+
+
 
 HOME_URL = 'https://gist.github.com/teffcode'
 
@@ -36,22 +40,26 @@ def parse_links(parsed):
         pass
 
 def links():
-    retos = 'retos'
+
     parsed = parse_home(HOME_URL)
     list1 = parse_links(parsed)
     parsed2 = parse_home(list1[37])
     list2 = parse_links(parsed2)
     all_list = list1[18:37]+list2[18:37]
     all_list = [item for item in all_list if item not in ('/teffcode')]
+     
+    with open('challenge.csv', 'w+', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['topic', 'challenge', 'answer'])
 
-    if not os.path.isdir(retos):
-        os.mkdir(retos)
+        for link in all_list:
+            retos = parse_tags(link)
+            row = [elements for elements in retos]
+            writer.writerow(row)
 
-    for i, link in enumerate (all_list):
-        parse_tags(link, retos, i)
 
 
-def parse_tags(link, retos, idx):
+def parse_tags(link):
 
     try:
         response = requests.get(link)
@@ -60,21 +68,21 @@ def parse_tags(link, retos, idx):
             parsed = html.fromstring(quiz)
             title = parsed.xpath(XPATH_TITLE_LINK)[0]
             title = _transform_title(title)
+            resolved = parsed.xpath('//tbody//td/text()')[0]
             
             try:
                 img = parsed.xpath(XPATH_IMG)[0]
             except:
                 img = parsed.xpath('//p//img/@data-canonical-src')[0]
 
-            with open(f'{retos}/{title}{idx}.txt', 'w', encoding='utf-8') as f:
-                f.write(title)
-                f.write(',')
-                f.write(img)
+            topic, challenge, answer = (title, img, resolved)
+
+        return (topic, challenge, answer)
+
 
     except ValueError as ve:
         print(ve)
         
-
 
 
 def _transform_title(title):
